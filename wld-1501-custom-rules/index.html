@@ -95,12 +95,14 @@
   <p><b>What this prototype is testing.</b> Whether an administrator can express a real shop rule using a basis, stacked conditions, an adjustment, a stage and a name, and whether the difference between "for each that matches" and "if any matches" is obvious enough at the point of choosing.</p>
   <p><b>Two things deliberately absent.</b> There is no generated sentence describing a saved rule, because word order and grammar do not survive translation; rules are summarised as discrete labelled values instead. And there is no warning about rules that overlap or never fire, because the rule name is what carries the intent.</p>
   <p><b>The container is not a field.</b> When a condition uses "if any matches" or "if none match", what it counts across follows from the basis rather than being chosen separately, so it is shown as read-only text.</p>
+  <p><b>Percentages are a Could, not agreed.</b> The Time and Percentage toggle in step 3 is REQ-12 and is here to be argued about. A percentage is measured against the standard time before any rule runs, never against the running total, and percentages against the same thing add rather than compound. That is what keeps rule order irrelevant. If percentages ever applied to the running total, an administrator would have to control the order rules are worked out in and this screen would need reordering as well.</p>
+  <p><b>Why the heavy plate rule names two shapes.</b> A welded plate arrives as Plate if it was cut from plate steel and as Flat bar if it was cut to length from bar stock, so a rule meant to catch end plates has to allow both. The weight condition is what keeps the stiffeners out. This is the reason the shape picker is a checkbox list rather than a dropdown.</p>
 </div>
 
 <script>
 /* ---------- property catalogue ---------- */
 const OPT = {
-  profile:["I","U","L","T","C","Pipe","Rectangular tube","Multifaceted tube","Round bar","Flat bar","Bulb flat bar","Sheet"],
+  profile:["I","U","L","T","C","Pipe","Rectangular tube","Multifaceted tube","Round bar","Flat bar","Bulb flat bar","Plate"],
   grade:["S235","S275","S355","S460"],
   exc:["EXC1","EXC2","EXC3","EXC4"],
   doab:["Doable","Partly doable","Not doable","Do Not Do","Sub-assembly"],
@@ -183,26 +185,27 @@ const levelOf  = k => k.startsWith("a_")?"assembly":k.startsWith("p_")?"part":"w
 
 /* ---------- seed rules (match the Confluence worked examples) ---------- */
 let RULES = [
-  {name:"Loading the trailer", basis:"assembly", stage:"Always", sign:1, min:10, sec:0, conds:[]},
-  {name:"Heavy plate handling", basis:"part", stage:"Fit-up", sign:1, min:5, sec:0, conds:[
-    {prop:"p_prof", cmp:"in", vals:["Flat bar"], count:"each"},
+  {name:"Loading the trailer", basis:"assembly", stage:"Always", sign:1, mode:"time", min:10, sec:0, pct:10, conds:[]},
+  {name:"Heavy plate handling", basis:"part", stage:"Fit-up", sign:1, mode:"time", min:5, sec:0, pct:10, conds:[
+    {prop:"p_prof", cmp:"in", vals:["Plate","Flat bar"], count:"each"},
     {prop:"p_wt", cmp:"gte", a:500, count:"each"}]},
-  {name:"Bracket to the machine", basis:"part", stage:"Logistics", sign:1, min:6, sec:0, conds:[
+  {name:"Bracket to the machine", basis:"part", stage:"Logistics", sign:1, mode:"time", min:6, sec:0, pct:10, conds:[
     {prop:"p_sub", cmp:"true", count:"each"}]},
-  {name:"PJP welding rate", basis:"weld", stage:"Welding", sign:1, min:0, sec:30, conds:[
+  {name:"PJP welding rate", basis:"weld", stage:"Welding", sign:1, mode:"time", min:0, sec:30, pct:10, conds:[
     {prop:"w_type", cmp:"in", vals:["PJP"], count:"each"}]},
-  {name:"PJP procedure setup", basis:"assembly", stage:"Welding", sign:1, min:8, sec:0, conds:[
+  {name:"PJP procedure setup", basis:"assembly", stage:"Welding", sign:1, mode:"time", min:8, sec:0, pct:10, conds:[
     {prop:"w_type", cmp:"in", vals:["PJP"], count:"any"}]},
-  {name:"No drilling setup", basis:"assembly", stage:"Fit-up", sign:-1, min:6, sec:0, conds:[
+  {name:"No drilling setup", basis:"assembly", stage:"Fit-up", sign:-1, mode:"time", min:6, sec:0, pct:10, conds:[
     {prop:"p_hole", cmp:"true", count:"none"}]},
-  {name:"EXC3 inspection", basis:"part", stage:"Fit-up", sign:1, min:3, sec:0, conds:[
-    {prop:"p_exc", cmp:"in", vals:["EXC3","EXC4"], count:"each"}]}
+  {name:"Quality check per part", basis:"part", stage:"Fit-up", sign:1, mode:"time", min:3, sec:0, pct:10, conds:[]}
 ];
 
 /* ---------- helpers ---------- */
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const badgeCls = s => "b-"+s.replace("-","").replace(" ","");
-const timeStr = r => (r.sign<0?"−":"+") + r.min + ":" + String(r.sec).padStart(2,"0");
+const adjStr = r => r.mode==="pct"
+  ? (r.sign<0?"−":"+") + (r.pct||0) + "%"
+  : (r.sign<0?"−":"+") + r.min + ":" + String(r.sec).padStart(2,"0");
 const containerFor = basis => basis==="assembly" ? "within the assembly" : basis==="part" ? "within the part" : "within the weld";
 
 function condText(c, basis){
@@ -229,7 +232,7 @@ function renderList(){
   host.innerHTML = RULES.map((r,i)=>{
     const chips = [`<span class="chip">Basis <b>${esc(BASES.find(b=>b.k===r.basis).n)}</b></span>`,
       `<span class="chip">Conditions <b>${r.conds.length||"none"}</b></span>`,
-      `<span class="chip${r.sign<0?' neg':''}">Adjustment <b>${timeStr(r)}</b></span>`].join("");
+      `<span class="chip${r.sign<0?' neg':''}">Adjustment <b>${adjStr(r)}</b></span>`].join("");
     const detail = r.conds.length
       ? '<div style="margin-top:6px;font-size:12.5px;color:#5A6B72">'+r.conds.map(c=>"• "+esc(condText(c,r.basis))).join("<br>")+'</div>'
       : '<div style="margin-top:6px;font-size:12.5px;color:#5A6B72">• No conditions, applies to every assembly</div>';
@@ -263,7 +266,7 @@ let draft=null, editIdx=-1;
 function openForm(idx){
   editIdx = (idx===undefined?-1:idx);
   draft = editIdx<0
-    ? {name:"",basis:"assembly",stage:"Fit-up",sign:1,min:0,sec:0,conds:[]}
+    ? {name:"",basis:"assembly",stage:"Fit-up",sign:1,mode:"time",min:0,sec:0,pct:10,conds:[]}
     : JSON.parse(JSON.stringify(RULES[editIdx]));
   renderForm();
   document.getElementById("formHost").scrollIntoView({behavior:"smooth",block:"start"});
@@ -296,14 +299,26 @@ function renderForm(){
       <div class="steplab"><span class="num" style="background:var(--adj)">3</span>
         <span class="stitle" style="color:var(--adj)">Adjustment</span>
         <span class="shint">How much time, added or removed?</span></div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="adjgrp">
+          <button class="sgn ${draft.mode!=="pct"?"on":""}" id="mt">Time</button>
+          <button class="sgn ${draft.mode==="pct"?"on":""}" id="mp">Percentage</button>
+        </div>
+        <span class="pill" style="background:#FAF0E5;color:#8A5524">COULD &middot; REQ-12</span>
+      </div>
       <div class="row">
         <div class="adjgrp">
           <button class="sgn ${draft.sign>0?"on":""}" id="sp">+</button>
           <button class="sgn ${draft.sign<0?"on":""}" id="sm">&minus;</button>
         </div>
-        <input type="number" id="f_min" min="0" value="${draft.min}" style="width:80px"> <span class="unit">min</span>
-        <input type="number" id="f_sec" min="0" max="59" value="${draft.sec}" style="width:80px"> <span class="unit">sec</span>
+        ${draft.mode==="pct"
+          ? `<input type="number" id="f_pct" min="0" max="100" value="${draft.pct}" style="width:90px"> <span class="unit">%</span>`
+          : `<input type="number" id="f_min" min="0" value="${draft.min}" style="width:80px"> <span class="unit">min</span>
+             <input type="number" id="f_sec" min="0" max="59" value="${draft.sec}" style="width:80px"> <span class="unit">sec</span>`}
       </div>
+      ${draft.mode==="pct"
+        ? '<div class="shint" style="margin-top:8px">A percentage applies to the standard time for this rule&rsquo;s stage, at the level its basis counts, worked out before any rule runs. Percentages against the same thing add together rather than compound, so rule order never changes the answer.</div>'
+        : ''}
     </div>
 
     <div class="step">
@@ -331,9 +346,15 @@ function renderForm(){
   const g = id => document.getElementById(id);
   g("f_basis").onchange = e => { draft.basis = e.target.value; renderConds(); stageHint(); };
   g("f_stage").onchange = e => { draft.stage = e.target.value; stageHint(); };
-  g("f_min").oninput = e => draft.min = Math.max(0, +e.target.value||0);
-  g("f_sec").oninput = e => draft.sec = Math.min(59, Math.max(0, +e.target.value||0));
+  if(draft.mode==="pct"){
+    g("f_pct").oninput = e => draft.pct = Math.max(0, +e.target.value||0);
+  } else {
+    g("f_min").oninput = e => draft.min = Math.max(0, +e.target.value||0);
+    g("f_sec").oninput = e => draft.sec = Math.min(59, Math.max(0, +e.target.value||0));
+  }
   g("f_name").oninput = e => draft.name = e.target.value;
+  g("mt").onclick = () => { draft.mode = "time"; renderForm(); };
+  g("mp").onclick = () => { draft.mode = "pct";  renderForm(); };
   g("sp").onclick = () => { draft.sign =  1; renderForm(); };
   g("sm").onclick = () => { draft.sign = -1; renderForm(); };
   g("addcond").onclick = () => { draft.conds.push({prop:"p_wt",cmp:"gte",a:500,count:"each"}); renderConds(); };
@@ -411,7 +432,12 @@ function save(){
   const nm = (draft.name||"").trim();
   if(!nm) e.push("A rule needs a name.");
   if(RULES.some((r,i)=>i!==editIdx && r.name.toLowerCase()===nm.toLowerCase())) e.push("That name is already used by another rule.");
-  if(draft.min===0 && draft.sec===0) e.push("The adjustment cannot be zero.");
+  if(draft.mode==="pct"){
+    if(!draft.pct) e.push("The adjustment cannot be zero.");
+    if(draft.sign<0 && draft.pct>100) e.push("A rule cannot take away more than 100% of the time it applies to.");
+  } else if(draft.min===0 && draft.sec===0){
+    e.push("The adjustment cannot be zero.");
+  }
   if(draft.conds.some(c=>c.count==="none") && draft.basis!=="assembly")
     e.push("A rule that applies when nothing matches has nothing to count against, so its basis must be per assembly.");
   draft.conds.forEach(c=>{ const p=findProp(c.prop);
