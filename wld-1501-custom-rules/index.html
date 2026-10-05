@@ -439,8 +439,6 @@ function save(){
   } else if(draft.min===0 && draft.sec===0){
     e.push("The adjustment cannot be zero.");
   }
-  if(draft.conds.some(c=>c.count==="none") && draft.basis!=="assembly")
-    e.push("A rule that applies when nothing matches has nothing to count against, so its basis must be per assembly.");
   draft.conds.forEach(c=>{ const p=findProp(c.prop);
     if(p.t==="enum" && !(c.vals||[]).length) e.push(`Choose at least one value for ${p.n}.`); });
 
