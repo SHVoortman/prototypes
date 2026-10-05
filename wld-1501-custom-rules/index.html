@@ -166,6 +166,7 @@ const LEVEL_NAME = {assembly:"Assembly", part:"Part", weld:"Weld"};
 let UNITS = "metric";
 const BASES = [
   {k:"assembly", n:"Per assembly"},
+  {k:"subassembly", n:"Per sub-assembly"},
   {k:"part",     n:"Per secondary part"},
   {k:"weld",     get n(){ return "Per weld length ("+(UNITS==="imperial"?"ft":"m")+")"; }}
 ];
@@ -190,8 +191,7 @@ let RULES = [
   {name:"Heavy plate handling", basis:"part", stage:"Fit-up", sign:1, mode:"time", min:5, sec:0, pct:10, conds:[
     {prop:"p_prof", cmp:"in", vals:["Plate","Flat bar"], count:"each"},
     {prop:"p_wt", cmp:"gte", a:500, count:"each"}]},
-  {name:"Bracket to the machine", basis:"part", stage:"Logistics", sign:1, mode:"time", min:6, sec:0, pct:10, conds:[
-    {prop:"p_sub", cmp:"true", count:"each"}]},
+  {name:"Bracket to the machine", basis:"subassembly", stage:"Logistics", sign:1, mode:"time", min:6, sec:0, pct:10, conds:[]},
   {name:"PJP welding rate", basis:"weld", stage:"Welding", sign:1, mode:"time", min:0, sec:30, pct:10, conds:[
     {prop:"w_type", cmp:"in", vals:["PJP"], count:"each"}]},
   {name:"PJP procedure setup", basis:"assembly", stage:"Welding", sign:1, mode:"time", min:8, sec:0, pct:10, conds:[
@@ -207,7 +207,7 @@ const badgeCls = s => "b-"+s.replace("-","").replace(" ","");
 const adjStr = r => r.mode==="pct"
   ? (r.sign<0?"−":"+") + (r.pct||0) + "%"
   : (r.sign<0?"−":"+") + r.min + ":" + String(r.sec).padStart(2,"0");
-const containerFor = basis => basis==="assembly" ? "within the assembly" : basis==="part" ? "within the part" : "within the weld";
+const containerFor = basis => basis==="assembly" ? "within the assembly" : basis==="subassembly" ? "within the sub-assembly" : basis==="part" ? "within the part" : "within the weld";
 
 function condText(c, basis){
   const p = findProp(c.prop); if(!p) return "";
