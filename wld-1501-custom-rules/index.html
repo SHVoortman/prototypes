@@ -83,7 +83,7 @@
   <p class="sub">WLD-1501 prototype. Company level. The three standard groups (Logistics, Fit-up, Welding) sit above this on the real screen and are unchanged.</p>
 
   <div class="card">
-    <div class="card-hd"><h2>Custom Rules</h2><span class="pill">NEW</span></div>
+    <div class="card-hd"><h2>Custom Rules</h2><span class="pill">NEW</span><span class="adjgrp" style="margin-left:auto"><button class="sgn on" id="um">Metric</button><button class="sgn" id="ui">Imperial</button></span></div>
     <div id="list"></div>
     <div class="addbar"><button class="btn" id="add">+ Add Custom Rule</button></div>
   </div>
@@ -163,10 +163,11 @@ const PROPS = {
   ]
 };
 const LEVEL_NAME = {assembly:"Assembly", part:"Part", weld:"Weld"};
+let UNITS = "metric";
 const BASES = [
   {k:"assembly", n:"Per assembly"},
   {k:"part",     n:"Per secondary part"},
-  {k:"weld",     n:"Per metre of weld"}
+  {k:"weld",     get n(){ return "Per weld length ("+(UNITS==="imperial"?"ft":"m")+")"; }}
 ];
 const STAGES = ["Logistics","Fit-up","Welding","Always"];
 const COUNTS = [
@@ -222,7 +223,7 @@ function condText(c, basis){
   const parts = [LEVEL_NAME[levelOf(c.prop)], p.n, cmpName];
   if(v) parts.push(v);
   parts.push(cnt + within);
-  return parts.join("  \u00B7  ");
+  return parts.join("  ·  ");
 }
 
 /* ---------- list ---------- */
@@ -452,6 +453,14 @@ function save(){
 
 document.getElementById("add").onclick = () => openForm();
 renderList();
+
+/* unit switch: stands in for the user's length setting */
+["um","ui"].forEach(id=>document.getElementById(id).addEventListener("click",()=>{
+  UNITS = id==="ui" ? "imperial" : "metric";
+  document.getElementById("um").classList.toggle("on", UNITS==="metric");
+  document.getElementById("ui").classList.toggle("on", UNITS==="imperial");
+  renderList(); if(draft) renderForm();
+}));
 </script>
 </body>
 </html>
